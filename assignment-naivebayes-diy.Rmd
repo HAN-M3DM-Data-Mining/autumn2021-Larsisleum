@@ -1,8 +1,8 @@
 ---
 title: "Assigment - Naive Bayes DIY"
 author:
-  - name author here - Author
-  - name reviewer here - Reviewer
+  - Lars Bunnik - Author
+  -  - Reviewer
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
    html_notebook:
@@ -23,10 +23,34 @@ Choose a suitable dataset from [this](https://github.com/HAN-M3DM-Data-Mining/as
 
 
 ## Business Understanding
-text and code here
+The dataset that is going to be used to train and test the Naive Bayes model is the "Fake news" dataset. By training the predictive NB model which words in the titles are more likely to suggest fake news and which words aren't we test how accurate the model can predict if the article is actually fake news or if it is not.
 
 ## Data Understanding
-text and code here
+#The first step is to look at what data we have.
+
+```{r}
+url <- "https://raw.githubusercontent.com/HAN-M3DM-Data-Mining/assignments/master/datasets/NB-fakenews.csv"
+rawDF <- read_csv(url)
+
+head(rawDF)
+```
+
+
+```{r}
+#In the table there are numerous colomns that we won't use. We only need the "title" and the "label" columns. The title is the metric we use to predict if the article is reliable or not and the lable actually tells us if the article is 0 (reliable) or 1 (unreliable). So we clean the id, author and text columns.
+
+cleanDF <- rawDF[c(-1,-3, -4)] %>% na.omit
+head(cleanDF)
+
+#the variable "label" now is of class "dbr". As it indicates whether the title belongs to the category 0: reliable or 1: unreliable we should convert it into a factor with the values "Reliable" and "Unreliable":
+
+cleanDF$label <- cleanDF$label %>% factor
+cleanDF$label <- factor(cleanDF$label, levels = c("0", "1"), labels = c("Reliable", "Unreliable")) %>% relevel("Reliable")
+levels(cleanDF$label)
+class(cleanDF$label)
+col_order <- c("label", "title")
+cleanDF <- cleanDF[, col_order]
+cleanDF
 
 ## Data Preparation
 text and code here
