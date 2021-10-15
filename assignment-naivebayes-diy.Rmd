@@ -2,7 +2,7 @@
 title: "Assigment - Naive Bayes DIY"
 author:
   - Lars Bunnik - Author
-  -  - Reviewer
+  -  - Joël van Bragt
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
    html_notebook:
