@@ -2,7 +2,7 @@
 title: "Assigment - Naive Bayes DIY"
 author:
   - Lars Bunnik - Author
-  -  - Joël van Bragt
+  - Joël van Bragt - Reviewer
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
    html_notebook:
@@ -130,3 +130,25 @@ Here we see that the model showed more False negatives than False positives.
 In te case of media articles i think it is important to especially focus on reducing the False Positives as much as possible because it is such a sensitive subject and it can really snowball when fake news gets wrongly labeled as reliable to the masses caused by a wrong prediction. That's why I think this can be used as an indication but never as a final judgement when deciding if an article is reliable or not.
 
 reviewer adds suggestions for improving the model
+
+
+
+##Review starts here
+
+Row 49 and 50:
+Unreliable <- cleanDF %>% filter(type == "Unreliable")
+Reliable <- cleanDF %>% filter(type == "Reliable")
+
+'type' should be 'label'.
+
+
+Row 56:
+wordcloud(Reliable$title, max.words = 20, scale = c(50, 0.5), colors= c("lightsteelblue1","lightsteelblue2","lightsteelblue3","lightsteelblue"))
+
+'Scale = c(50, 0.5)' should be changed into 'Scale = c(2, 0.5)' for better readability and data understanding.
+
+
+Row 38:
+cleanDF <- rawDF[c(-1,-2, -4)] %>% na.omit
+
+'-2' should be changed into '-3', otherwise the wrong column is being left out.
