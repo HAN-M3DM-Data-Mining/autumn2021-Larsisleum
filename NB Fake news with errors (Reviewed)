@@ -1,0 +1,132 @@
+---
+title: "Assigment - Naive Bayes DIY"
+author:
+  - Lars Bunnik - Author
+  -  - Joël van Bragt
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+   html_notebook:
+    toc: true
+    toc_depth: 2
+---
+
+```{r}
+library(tidyverse)
+library(tm)
+library(caret)
+library(wordcloud)
+library(e1071)
+```
+---
+
+
+## Business Understanding
+The dataset that is going to be used to train and test the Naive Bayes model is the "Fake news" dataset. By training the predictive NB model which words in the titles are more likely to suggest fake news and which words aren't we test how accurate the model can predict if the article is actually fake news or if it is not.
+
+## Data Understanding
+#The first step is to look at what data we have.
+
+```{r}
+url <- "https://raw.githubusercontent.com/HAN-M3DM-Data-Mining/assignments/master/datasets/NB-fakenews.csv"
+rawDF <- read_csv(url)
+head(rawDF)
+```
+
+
+```{r}
+#In the table there are numerous colomns that we won't use. We only need the "title" and the "label" columns. The title is the metric we use to predict if the article is reliable or not and the lable actually tells us if the article is 0 (reliable) or 1 (unreliable). So we clean the id, author and text columns.
+cleanDF <- rawDF[c(-1,-2, -4)] %>% na.omit
+head(cleanDF)
+#the variable "label" now is of class "dbr". As it indicates whether the title belongs to the category 0: reliable or 1: unreliable we should convert it into a factor with the values "Reliable" and "Unreliable". We also switched the colums so we have the factor first and the characters second.
+cleanDF$label <- cleanDF$label %>% factor
+cleanDF$label <- factor(cleanDF$label, levels = c("0", "1"), labels = c("Reliable", "Unreliable")) %>% relevel("Reliable")
+levels(cleanDF$label)
+class(cleanDF$label)
+col_order <- c("label", "title")
+cleanDF <- cleanDF[, col_order]
+cleanDF
+
+Unreliable <- cleanDF %>% filter(type == "Unreliable")
+Reliable <- cleanDF %>% filter(type == "Reliable")
+```
+To visualize the data we put it in a wordcloud (I changed the scale a bit from the example to make sure all 20 words are included)
+
+```{r}
+wordcloud(Unreliable$title, max.words = 20, scale = c(2, 0.5), colors= c("indianred1","indianred2","indianred3","indianred"))
+wordcloud(Reliable$title, max.words = 20, scale = c(50, 0.5), colors= c("lightsteelblue1","lightsteelblue2","lightsteelblue3","lightsteelblue"))
+```
+## Data Preparation
+Now we are going to transfer the tekst into the numerical table a function for this is corpus. This is nothing else then a collection of tekst frames which now is called a document instead of a collection of strings. 
+
+```{r}
+rawCorpus <- Corpus(VectorSource(cleanDF$title))
+inspect(rawCorpus[1:3])
+```
+now for the program there is a difference between upper and lowercase so we have to make it all lowercase. We also remove all numbers, stopwords and punctuation because there is little information to determine if the article is reliable or unreliable.
+
+```{r}
+cleanCorpus <- rawCorpus %>% tm_map(tolower) %>% tm_map(removeNumbers)
+cleanCorpus <- cleanCorpus %>% tm_map(removeWords, stopwords()) %>% tm_map(removePunctuation)
+cleanCorpus <- cleanCorpus %>% tm_map(stripWhitespace)
+  tibble(Raw = rawCorpus$content[1:3], Clean = cleanCorpus$content[1:3])
+  ```
+  
+Now we transform this into a numerical matrix (DocumentTermMatrix)
+It looks at all the words and puts a 1 when the word is found 
+So it essenctialy counts how often each word is repeated and each word is a separate column
+
+```{r}  
+cleanDTM <- cleanCorpus %>% DocumentTermMatrix
+inspect(cleanDTM)
+```
+
+Now we transformed a string into a numerical value.
+So we can now start training a model on this
+We need to split it into a training and a test set
+A function createdatapartition will try to make the test set and the trainingset with equal distributions of the label
+
+```{r} 
+set.seed(1234)
+trainIndex <- createDataPartition(cleanDF$label, p = .75, 
+                                  list = FALSE, 
+                                  times = 1)
+head(trainIndex)
+trainDF <- cleanDF[trainIndex, ]
+testDF <- cleanDF[-trainIndex, ]
+trainCorpus <- cleanCorpus[trainIndex]
+testCorpus <- cleanCorpus[-trainIndex]
+trainDTM <- cleanDTM[trainIndex, ]
+testDTM <- cleanDTM[-trainIndex, ]
+```
+
+Some words will have very few counts and therefore will have limited predictive power. To save on computation time we will eliminate words with low frequencies. 
+
+```{r} 
+freqWords <- trainDTM %>% findFreqTerms(5)
+trainDTM <-  DocumentTermMatrix(trainCorpus, list(dictionary = freqWords))
+testDTM <-  DocumentTermMatrix(testCorpus, list(dictionary = freqWords))
+convert_counts <- function(x) {
+  x <- ifelse(x > 0, 1, 0) %>% factor(levels = c(0,1), labels = c("No", "Yes"))
+}
+nColsDTM <- dim(trainDTM)[2]
+trainDTM <- apply(trainDTM, MARGIN = 2, convert_counts)
+testDTM <- apply(testDTM, MARGIN = 2, convert_counts)
+head(trainDTM[,1:10])
+```
+Now we are ready to Model
+
+## Modeling
+```{r} 
+nbayesModel <-  naiveBayes(trainDTM, trainDF$label, laplace = 1)
+``` 
+
+## Evaluation and Deployment
+The performance has an accuracy of 0.9265 which is very good for this model.
+
+Prediction   Reliable Unreliable
+  Reliable       2305         81
+  Unreliable      291       2382
+Here we see that the model showed more False negatives than False positives. 
+In te case of media articles i think it is important to especially focus on reducing the False Positives as much as possible because it is such a sensitive subject and it can really snowball when fake news gets wrongly labeled as reliable to the masses caused by a wrong prediction. That's why I think this can be used as an indication but never as a final judgement when deciding if an article is reliable or not.
+
+reviewer adds suggestions for improving the model
